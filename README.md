@@ -10,3 +10,6 @@ $> < file1 cmd1 | cmd2 > file2
 
 Full subject:
 [Subject](.assets/pipex.pdf)
+
+## Reference
+- https://www.youtube.com/watch?v=5fnVr-zH-SE

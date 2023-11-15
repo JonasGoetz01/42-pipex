@@ -6,7 +6,8 @@ HEADERS	:= -I ./inc
 
 SRCDIR := ./src/
 
-SRCS	:=  $(SRCDIR)pipex.c
+SRCS	:=  $(SRCDIR)pipex.c \
+			$(SRCDIR)utils.c
 
 OBJS	:= ${SRCS:.c=.o}
 

@@ -11,5 +11,8 @@ $> < file1 cmd1 | cmd2 > file2
 Full subject:
 [Subject](.assets/pipex.pdf)
 
-## Reference
+## References
 - https://www.youtube.com/watch?v=5fnVr-zH-SE
+- https://www.youtube.com/watch?v=NkfIUo_Qq4c&t=75s
+- https://www.youtube.com/watch?v=VzCawLzITh0
+

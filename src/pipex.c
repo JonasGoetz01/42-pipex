@@ -6,15 +6,14 @@
 /*   By: jgotz <jgotz@student.42heilbronn.de>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/11/15 17:07:58 by jgotz             #+#    #+#             */
-/*   Updated: 2023/11/15 17:08:47 by jgotz            ###   ########.fr       */
+/*   Updated: 2023/11/15 18:55:57 by jgotz            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../inc/pipex.h"
 
-#define PROCESS_NUM 10
-
-static void	child_routine(int pnum, int *i, int *x, int **pids, int ***pipes)
+static void	child_routine(int pnum, int *i, int *x, int **pids, int ***pipes,
+		char **argv)
 {
 	*pids = (int *)malloc(pnum * sizeof(int));
 	if (!(*pids))
@@ -25,6 +24,7 @@ static void	child_routine(int pnum, int *i, int *x, int **pids, int ***pipes)
 	if ((*pids)[*i] == 0)
 	{
 		close_pipes(*i, pnum, pipes);
+		printf("child command: %s\n", argv[(*i)]);
 		if (read((*pipes)[*i][0], x, sizeof(int)) == -1)
 			write_error("Error at reading\n");
 		printf("(%d) Got %d\n", *i, *x);
@@ -53,6 +53,11 @@ static void	parent_routine(int pnum, int ***pipes)
 	close((*pipes)[0][1]);
 	close((*pipes)[pnum][0]);
 }
+/**
+ * @todo
+ * every child process should know its number
+ * and execute the command from argv[command number]
+ */
 
 int	main(int argc, char *argv[])
 {
@@ -68,14 +73,14 @@ int	main(int argc, char *argv[])
 		exit(-1);
 	}
 	(void)argv;
-	create_pipes(PROCESS_NUM, &pipes);
+	create_pipes(argc - 1, &pipes);
 	i = 0;
-	while (i < PROCESS_NUM)
-		child_routine(PROCESS_NUM, &i, &x, &pids, &pipes);
-	close_pipes_parent(PROCESS_NUM, &pipes);
-	parent_routine(PROCESS_NUM, &pipes);
+	while (i < argc - 1)
+		child_routine(argc - 1, &i, &x, &pids, &pipes, argv);
+	close_pipes_parent(argc - 1, &pipes);
+	parent_routine(argc - 1, &pipes);
 	i = 0;
-	while (i++ < PROCESS_NUM)
+	while (i++ < argc - 1)
 		wait(NULL);
 	return (0);
 }

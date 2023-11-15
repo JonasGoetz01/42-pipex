@@ -5,91 +5,77 @@
 /*                                                    +:+ +:+         +:+     */
 /*   By: jgotz <jgotz@student.42heilbronn.de>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2023/11/13 14:10:42 by jgotz             #+#    #+#             */
-/*   Updated: 2023/11/14 11:03:10 by jgotz            ###   ########.fr       */
+/*   Created: 2023/11/15 17:07:58 by jgotz             #+#    #+#             */
+/*   Updated: 2023/11/15 17:08:47 by jgotz            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../inc/pipex.h"
 
-/**
- * Functions to use:
- * open -> open a file
- * close -> close file descriptor
- * read -> read from file descriptor
- * write -> write to file descriptor
- * malloc -> allocate memory
- * free -> free memory
- * perror -> print error message
- * strerror -> return error message
- * access -> check if file exists
- * dup -> duplicate file descriptor
- * dup2 -> duplicate file descriptor to custom file descriptor
- * execve -> execute program
- * exit -> exit program
- * fork -> create child process
- * pipe -> create pipe between two file descriptors
- * unlink -> delete file
- * wait -> wait for child process to finish
- * waitpid -> wait for child process to finish with pid
- */
+#define PROCESS_NUM 10
 
-/**
- * Usage: ./pipex file1 cmd1 cmd2 file2
- *  		./pipex infile "ls -l" "wc -l" outfile
- */
-int	main(int argc, char **argv)
+static void	child_routine(int pnum, int *i, int *x, int **pids, int ***pipes)
 {
-	int		fd[2];
-	int		pid1;
-	int		pid2;
-	int		outfilefd;
-	int		infilefd;
-	char	**cmd1;
-	char	**cmd2;
+	*pids = (int *)malloc(pnum * sizeof(int));
+	if (!(*pids))
+		write_error("Error creating pids");
+	(*pids)[*i] = fork();
+	if ((*pids)[*i] == -1)
+		write_error("Error with creating process\n");
+	if ((*pids)[*i] == 0)
+	{
+		close_pipes(*i, pnum, pipes);
+		if (read((*pipes)[*i][0], x, sizeof(int)) == -1)
+			write_error("Error at reading\n");
+		printf("(%d) Got %d\n", *i, *x);
+		(*x)++;
+		if (write((*pipes)[(*i) + 1][1], x, sizeof(int)) == -1)
+			write_error("Error at writing\n");
+		printf("(%d) Sent %d\n", *i, *x);
+		close((*pipes)[*i][0]);
+		close((*pipes)[(*i) + 1][1]);
+		exit(0);
+	}
+	(*i)++;
+}
 
-	infilefd = 0;
-	outfilefd = 0;
+static void	parent_routine(int pnum, int ***pipes)
+{
+	int	y;
+
+	y = 5;
+	printf("Main process sent %d\n", y);
+	if (write((*pipes)[0][1], &y, sizeof(int)) == -1)
+		write_error("Error at writing\n");
+	if (read((*pipes)[pnum][0], &y, sizeof(int)) == -1)
+		write_error("Error at reading\n");
+	printf("The final result is %d\n", y);
+	close((*pipes)[0][1]);
+	close((*pipes)[pnum][0]);
+}
+
+int	main(int argc, char *argv[])
+{
+	int	*pids;
+	int	**pipes;
+	int	i;
+	int	x;
+
+	pipes = NULL;
 	if (argc != 5)
-		return (1);
-	if (pipe(fd) == -1)
-		return (1);
-	infilefd = open(argv[1], O_RDONLY);
-	if (infilefd == -1)
-		return (1);
-	pid1 = fork();
-	if (pid1 == -1)
-		return (1);
-	if (pid1 == 0)
 	{
-		dup2(infilefd, STDIN_FILENO);
-		close(infilefd);
-		dup2(fd[1], STDOUT_FILENO);
-		close(fd[1]);
-		cmd1 = ft_split(argv[2], ' ');
-		execvp(cmd1[0], cmd1);
-		exit(1);
+		perror("Wrong number of arguments\n");
+		exit(-1);
 	}
-	pid2 = fork();
-	if (pid2 == -1)
-		return (1);
-	if (pid2 == 0)
-	{
-		dup2(fd[0], STDIN_FILENO);
-		close(fd[0]);
-		close(fd[1]);
-		outfilefd = open(argv[4], O_WRONLY | O_CREAT, 0755);
-		if (outfilefd == -1)
-			exit(1);
-		dup2(outfilefd, STDOUT_FILENO);
-		close(outfilefd);
-		cmd2 = ft_split(argv[3], ' ');
-		execvp(cmd2[0], cmd2);
-		exit(1);
-	}
-	close(fd[0]);
-	close(fd[1]);
-	waitpid(pid1, NULL, 0);
-	waitpid(pid2, NULL, 0);
+	(void)argv;
+	create_pipes(PROCESS_NUM, &pipes);
+	i = 0;
+	while (i < PROCESS_NUM)
+		child_routine(PROCESS_NUM, &i, &x, &pids, &pipes);
+	close_pipes_parent(PROCESS_NUM, &pipes);
+	parent_routine(PROCESS_NUM, &pipes);
+	i = 0;
+	while (i++ < PROCESS_NUM)
+		wait(NULL);
 	return (0);
 }
